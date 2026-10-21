@@ -1,0 +1,13 @@
+{
+  "data_type": "SIMULATED; not actual dealership results",
+  "as_of": "2026-10-20",
+  "vehicles_acquired": 400,
+  "open_vehicles": 129,
+  "sold_vehicles": 271,
+  "open_cost_cad": 4176500,
+  "over_90_units": 34,
+  "over_90_cost_cad": 1113500,
+  "over_90_share_pct": 26.36,
+  "median_open_age_days": 55.0,
+  "median_sold_days": 70.0
+}
