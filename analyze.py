@@ -1,4 +1,8 @@
-"""Run validated SQLite snapshot analysis on simulated data."""
+"""Run validated SQLite snapshot analysis on simulated data.
+
+Keep historical exports separate from the published snapshot:
+    python analyze.py --as-of 2026-06-30 --output-dir results/2026-06-30
+"""
 from pathlib import Path
 import argparse, json, sqlite3
 import pandas as pd
@@ -32,7 +36,7 @@ def snapshot(data,as_of):
   FROM snapshot WHERE is_open=1 AND age_days>90 ORDER BY review_rank''',conn)
  return result,priority
 
-def main(as_of=AS_OF):
+def main(as_of=AS_OF, output_dir=None):
  data=load_data();df,priority=snapshot(data,as_of)
  active=df[df.is_open==1].copy();sold=df[df.is_open==0].copy()
  # Independently reconcile SQL's active population and acquisition cost in pandas.
@@ -48,7 +52,8 @@ def main(as_of=AS_OF):
  'over_90_share_pct':round(float((active.age_days>90).mean()*100),2) if len(active) else None,
  'median_open_age_days':float(active.age_days.median()) if len(active) else None,
  'median_sold_days':float(sold.days_to_sale.median()) if len(sold) else None}
- out=ROOT/'results';out.mkdir(exist_ok=True)
+ out=Path(output_dir) if output_dir is not None else ROOT/'results'
+ out.mkdir(parents=True,exist_ok=True)
  df.to_csv(out/'snapshot.csv',index=False)
  priority.to_csv(out/'review_queue.csv',index=False)
  active.groupby('age_bucket',sort=False).agg(units=('stock_id','size'),cost_cad=('acquisition_cost_cad','sum')).reindex(['0–30','31–60','61–90','91+'],fill_value=0).to_csv(out/'aging_summary.csv')
@@ -58,4 +63,6 @@ def main(as_of=AS_OF):
  return summary
 if __name__=='__main__':
  parser=argparse.ArgumentParser();parser.add_argument('--as-of',default=AS_OF)
- main(parser.parse_args().as_of)
+ parser.add_argument('--output-dir',type=Path,help='Export folder (default: results beside this script). Relative paths use the current working directory; existing exports in the selected folder are overwritten.')
+ args=parser.parse_args()
+ main(args.as_of,args.output_dir)
