@@ -18,11 +18,11 @@ For a historical view that preserves the published results:
 python analyze.py --as-of 2026-06-30 --output-dir results/2026-06-30
 ```
 
-Connect to `results/2026-06-30/snapshot.csv` for that view. Each export represents **one snapshot date**. The CSV has no snapshot-date column; read `as_of` from the adjacent `summary.json` and put it in the dashboard title. To change dates, generate another export and replace or refresh the data source. Do not union snapshots without adding a date column and restricting each view to one date.
+Connect to `results/2026-06-30/snapshot.csv` for that view. Each export represents **one snapshot date**, recorded on every row in `snapshot_date` and as `as_of` in the adjacent `summary.json`. Use that date in the dashboard title. To change dates, generate another export and replace or refresh the data source. If you union exports, the grain becomes `(snapshot_date, stock_id)`; restrict inventory cards and review queues to one snapshot date to avoid double-counting repeated vehicles and cost. An empty snapshot still has the column header; its date remains available in `summary.json`.
 
 ## Build the dashboard
 
-1. Check field types: `stock_id`, `segment`, `location`, and `age_bucket` are text; `is_open` and `age_days` are whole numbers; CAD amounts are numeric; `acquired_date` and `sold_date` are dates. Blank sale fields are expected for open stock.
+1. Check field types: `stock_id`, `segment`, `location`, and `age_bucket` are text; `is_open` and `age_days` are whole numbers; CAD amounts are numeric; `snapshot_date`, `acquired_date` and `sold_date` are dates. Blank sale fields are expected for open stock.
 2. Create the fields in [calculated_fields.md](calculated_fields.md).
 3. Add cards for open vehicles, open acquisition cost, 91+ vehicles, 91+ acquisition cost, and share of aged vehicles.
 4. Build an open-stock aging chart: filter the worksheet to `is_open = 1`, place `age_bucket` on Columns and `COUNTD(stock_id)` on Rows, then manually order 0–30, 31–60, 61–90, 91+.
@@ -53,3 +53,4 @@ For historical exports, reconcile against their own `summary.json`; the default 
 Acquisition cost is not market value or estimated savings. Completed-sale duration excludes unsold stock and is not an unbiased estimate of time to sale for all vehicles.
 
 **Status:** Build instructions and formulas only; no Tableau workbook or published dashboard is included.
+

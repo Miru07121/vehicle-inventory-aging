@@ -61,6 +61,8 @@ For Tableau, follow the [dashboard build guide](tableau/README.md), [calculated 
 
 `stock_id` joins all three tables. Dates use YYYY-MM-DD. All `*_cad` fields are positive Canadian-dollar amounts. `is_open` is 1 for stock acquired by the snapshot and not sold by that date, otherwise 0. Sales on the snapshot date count as sold. Future acquisitions and future sale details are excluded from historical snapshots.
 
+Every row in `snapshot.csv` includes `snapshot_date`. A single export has one row per stock ID; combined exports have grain `(snapshot_date, stock_id)`. Filter combined data to one date before summing inventory units or cost. Empty exports retain the date column header and record the selected date in `summary.json`.
+
 Input validation rejects missing values, duplicate IDs, unmatched keys, impossible or noncanonical dates, nonnumeric or infinite prices, nonpositive prices, and sales before acquisition. Use zero-padded dates such as `2026-01-02`, including for `--as-of`; timestamps and `2026-1-2` are rejected because the snapshot logic compares ISO date text.
 
 Age is elapsed calendar days from acquisition to snapshot. Open-stock buckets are 0–30, 31–60, 61–90, and 91+. Completed-sale duration is sale date minus acquisition date. Open-stock age statistics exclude sold vehicles. The review queue uses SQL `ROW_NUMBER`, sorting by descending age, then acquisition cost, then stock ID.
