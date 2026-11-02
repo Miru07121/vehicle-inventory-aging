@@ -17,4 +17,5 @@ WITH eligible AS (
                 ELSE '91+' END AS age_bucket
  FROM eligible
 )
-SELECT * FROM classified ORDER BY stock_id;
+SELECT :as_of AS snapshot_date, * FROM classified ORDER BY stock_id;
+
