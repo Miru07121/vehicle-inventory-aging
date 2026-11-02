@@ -4,10 +4,21 @@ Keep historical exports separate from the published snapshot:
     python analyze.py --as-of 2026-06-30 --output-dir results/2026-06-30
 """
 from pathlib import Path
+from datetime import date
+from math import isfinite
+from numbers import Real
 import argparse, json, sqlite3
 import pandas as pd
 ROOT=Path(__file__).resolve().parent
 AS_OF='2026-10-20'
+
+def validate_date(value, label):
+ """Require canonical dates because SQL and reconciliation compare text."""
+ try:
+  if not isinstance(value,str) or date.fromisoformat(value).isoformat()!=value:
+   raise ValueError
+ except (TypeError,ValueError):
+  raise ValueError(f'{label}: expected a valid YYYY-MM-DD date') from None
 
 def load_data():
  data={n:pd.read_csv(ROOT/'data'/f'{n}.csv') for n in ['vehicles','purchases','sales']}
@@ -16,15 +27,18 @@ def load_data():
  if set(data['vehicles'].stock_id)!=set(data['purchases'].stock_id):raise ValueError('Vehicle/purchase keys differ')
  if not set(data['sales'].stock_id)<=set(data['vehicles'].stock_id):raise ValueError('Unknown sold vehicle')
  p=data['purchases'];s=data['sales']
- pd.to_datetime(p.acquired_date,format='%Y-%m-%d',errors='raise')
- pd.to_datetime(s.sold_date,format='%Y-%m-%d',errors='raise')
+ for label,values in [('purchases.acquired_date',p.acquired_date),('sales.sold_date',s.sold_date)]:
+  for value in values:validate_date(value,label)
+ for label,values in [('acquisition_cost_cad',p.acquisition_cost_cad),('asking_price_cad',p.asking_price_cad),('sale_price_cad',s.sale_price_cad)]:
+  if not values.map(lambda value:isinstance(value,Real) and not isinstance(value,bool) and isfinite(value)).all():
+   raise ValueError(f'{label}: prices must be finite numeric values')
  if (p[['acquisition_cost_cad','asking_price_cad']]<=0).any().any() or (s.sale_price_cad<=0).any():raise ValueError('Nonpositive price')
  joined=p.merge(s,on='stock_id')
  if (joined.sold_date<joined.acquired_date).any():raise ValueError('Sale before acquisition')
  return data
 
 def snapshot(data,as_of):
- pd.to_datetime(as_of,format='%Y-%m-%d',errors='raise')
+ validate_date(as_of,'as_of')
  with sqlite3.connect(':memory:') as conn:
   for name,df in data.items():df.to_sql(name,conn,index=False)
   result=pd.read_sql_query((ROOT/'queries.sql').read_text(),conn,params={'as_of':as_of})
@@ -66,3 +80,4 @@ if __name__=='__main__':
  parser.add_argument('--output-dir',type=Path,help='Export folder (default: results beside this script). Relative paths use the current working directory; existing exports in the selected folder are overwritten.')
  args=parser.parse_args()
  main(args.as_of,args.output_dir)
+

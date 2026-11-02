@@ -59,6 +59,33 @@ class ValidationTests(unittest.TestCase):
         self.data['purchases'].loc[0, 'acquired_date'] = '2026-02-30'
         self.assert_rejected('.*')
 
+    def test_noncanonical_dates(self):
+        for table, column in [('purchases', 'acquired_date'), ('sales', 'sold_date')]:
+            original = self.data[table].loc[0, column]
+            for value in ['2026-1-2', '2026-01-02 00:00:00', '2026/01/02']:
+                with self.subTest(table=table, value=value):
+                    self.data[table].loc[0, column] = value
+                    self.assert_rejected('YYYY-MM-DD')
+            self.data[table].loc[0, column] = original
+
+    def test_nonfinite_and_nonnumeric_prices(self):
+        for table, column in [('purchases', 'acquisition_cost_cad'),
+                              ('purchases', 'asking_price_cad'),
+                              ('sales', 'sale_price_cad')]:
+            original = self.data[table][column].copy()
+            self.data[table][column] = self.data[table][column].astype(object)
+            for value in [float('inf'), float('-inf'), 'unknown']:
+                with self.subTest(table=table, column=column, value=value):
+                    self.data[table].loc[0, column] = value
+                    self.assert_rejected('finite numeric')
+            self.data[table][column] = original
+
+    def test_snapshot_rejects_noncanonical_or_impossible_date(self):
+        for value in ['2026-1-2', '2026-02-30', '2026-10-20 00:00:00', None]:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, 'YYYY-MM-DD'):
+                    analyze.snapshot(self.data, value)
+
 
 class ExportTests(unittest.TestCase):
     def test_cli_historical_export_preserves_published_results(self):
@@ -99,3 +126,4 @@ class ExportTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
