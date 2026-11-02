@@ -27,6 +27,20 @@ class SnapshotTests(unittest.TestCase):
   df,q=snapshot(self.data,'2025-01-01')
   self.assertTrue(df.empty and q.empty)
 
+ def test_snapshot_date_is_explicit_and_preserved_when_empty(self):
+  for as_of in ['2026-10-20','2026-09-30']:
+   df,_=snapshot(self.data,as_of)
+   self.assertTrue(df.snapshot_date.eq(as_of).all())
+  empty,_=snapshot(self.data,'2025-01-01')
+  self.assertIn('snapshot_date',empty.columns)
+
+ def test_combined_snapshots_have_date_and_stock_grain(self):
+  first,_=snapshot(self.data,'2026-09-30')
+  second,_=snapshot(self.data,'2026-10-20')
+  combined=pd.concat([first,second],ignore_index=True)
+  self.assertFalse(combined.duplicated(['snapshot_date','stock_id']).any())
+  self.assertTrue(combined.stock_id.duplicated().any())
+
  def test_review_queue_ties_use_cost_then_stock_id(self):
   p=self.data['purchases']
   p.loc[p.stock_id.isin(['3','4','5','6']),'acquired_date']='2026-07-01'
@@ -66,3 +80,4 @@ class SnapshotTests(unittest.TestCase):
   self.assertEqual(set(queue.stock_id),set(active.loc[active.age_days>90,'stock_id']))
 
 if __name__=='__main__':unittest.main()
+
