@@ -35,7 +35,15 @@ streamlit run dashboard.py
 
 The dashboard includes snapshot date, segment and location filters; inventory and cost metrics; an aging chart; and a downloadable review queue. This project does not include a Power BI file.
 
-To regenerate the same synthetic inputs: `python generate_data.py`. To inspect a historical snapshot: `python analyze.py --as-of 2026-06-30`. This overwrites the output CSVs; run `python analyze.py` to restore the published snapshot.
+To regenerate the same synthetic inputs: `python generate_data.py`. To inspect a historical snapshot while preserving the published results:
+
+```bash
+python analyze.py --as-of 2026-06-30 --output-dir results/2026-06-30
+```
+
+The selected output folder contains `snapshot.csv`, `review_queue.csv`, `aging_summary.csv`, `segment_summary.csv`, and `summary.json`. Relative output paths use the current working directory. Existing files in the selected folder are overwritten. Omitting `--output-dir` writes to the repository's `results/` folder; run `python analyze.py` to restore the default snapshot after a historical run there.
+
+For Tableau, follow the [dashboard build guide](tableau/README.md), [calculated fields](tableau/calculated_fields.md), and [review checklist](tableau/dashboard_review_checklist.md). Connect to the chosen export's `snapshot.csv` and reconcile against its adjacent `summary.json`. These are build instructions and formulas; no Tableau workbook or published Tableau dashboard is included.
 
 ## Files and data model
 
@@ -52,6 +60,8 @@ To regenerate the same synthetic inputs: `python generate_data.py`. To inspect a
 | `tests/` | Boundary and historical-snapshot checks |
 
 `stock_id` joins all three tables. Dates use YYYY-MM-DD. All `*_cad` fields are positive Canadian-dollar amounts. `is_open` is 1 for stock acquired by the snapshot and not sold by that date, otherwise 0. Sales on the snapshot date count as sold. Future acquisitions and future sale details are excluded from historical snapshots.
+
+Input validation rejects missing values, duplicate IDs, unmatched keys, impossible or noncanonical dates, nonnumeric or infinite prices, nonpositive prices, and sales before acquisition. Use zero-padded dates such as `2026-01-02`, including for `--as-of`; timestamps and `2026-1-2` are rejected because the snapshot logic compares ISO date text.
 
 Age is elapsed calendar days from acquisition to snapshot. Open-stock buckets are 0–30, 31–60, 61–90, and 91+. Completed-sale duration is sale date minus acquisition date. Open-stock age statistics exclude sold vehicles. The review queue uses SQL `ROW_NUMBER`, sorting by descending age, then acquisition cost, then stock ID.
 
@@ -72,3 +82,4 @@ With authorized operational records, add condition, price changes, leads, carryi
 ## Portfolio description
 
 Built a Python and SQL inventory-aging analysis with an interactive Streamlit dashboard; validated inventory snapshots, segmented stock into aging buckets, and generated a prioritized review queue for a simulated 400-vehicle dataset.
+
